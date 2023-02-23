@@ -1,5 +1,6 @@
 import supabase from '../supabase';
 import CATEGORIES from '../data';
+import { useState } from 'react';
 
 function FactList({ factData, setFactData }) {
   if (factData.length === 0)
@@ -14,12 +15,7 @@ function FactList({ factData, setFactData }) {
       {' '}
       <ul className="facts-list">
         {factData.map(fact => (
-          <Fact
-            factData={factData}
-            setFactData={setFactData}
-            key={fact.id}
-            fact={fact}
-          />
+          <Fact setFactData={setFactData} key={fact.id} fact={fact} />
         ))}
       </ul>
       <p>There are {factData.length} facts in the database, add your own!</p>
@@ -27,27 +23,27 @@ function FactList({ factData, setFactData }) {
   );
 }
 
-function Fact({ fact, factData, setFactData }) {
+function Fact({ fact, setFactData }) {
+  const [isUpdating, setIsUpdating] = useState(false);
+
   const handleVote = async (id, voteType, currentVotes) => {
+    setIsUpdating(true);
     const { data, error } = await supabase
       .from('facts')
       .update({ [voteType]: currentVotes + 1 })
       .eq('id', id)
       .select();
     if (!error) {
-      const index = factData.findIndex(fact => fact.id === data[0].id);
-
-      setFactData(facts => {
-        const factArr = [...facts];
-        factArr[index] = data[0];
-        return factArr;
-      });
+      setFactData(facts =>
+        facts.map(f => (f.id === data[0].id ? (f = data[0]) : f))
+      );
     } else alert('There was a problem sending the data.');
+    setIsUpdating(false);
   };
   return (
     <li className="fact">
       <p>
-        {fact.votesFalse > 5 ? (
+        {fact.votesFalse > 4 ? (
           <span className="disputed">[⛔️ DISPUTED]</span>
         ) : null}
         {fact.text}
@@ -75,6 +71,7 @@ function Fact({ fact, factData, setFactData }) {
           onClick={() =>
             handleVote(fact.id, 'votesInteresting', fact.votesInteresting)
           }
+          disabled={isUpdating}
         >
           👍 {fact.votesInteresting}
         </button>
@@ -82,11 +79,13 @@ function Fact({ fact, factData, setFactData }) {
           onClick={() =>
             handleVote(fact.id, 'votesMindblowing', fact.votesMindblowing)
           }
+          disabled={isUpdating}
         >
           🤯 {fact.votesMindblowing}
         </button>
         <button
           onClick={() => handleVote(fact.id, 'votesFalse', fact.votesFalse)}
+          disabled={isUpdating}
         >
           ⛔️ {fact.votesFalse}
         </button>
